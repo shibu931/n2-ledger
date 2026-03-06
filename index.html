@@ -7,8 +7,15 @@
     <style>
         :root { --primary: #27ae60; --secondary: #2980b9; --dark: #2c3e50; --danger: #e74c3c; }
         body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 10px; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
         
+        /* Loading Overlay */
+        #loadingOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.8); display: flex; justify-content: center;
+            align-items: center; z-index: 1000; font-weight: bold; color: var(--dark);
+        }
+
         /* Stats */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
         .stat-card { padding: 10px; border-radius: 10px; text-align: center; color: white; font-size: 0.8rem; }
@@ -23,17 +30,19 @@
         .full { grid-column: span 2; }
         input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
         button { grid-column: span 2; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #95a5a6; cursor: not-allowed; }
 
         /* Logs */
         .log-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
         .log-meta { color: #666; font-size: 0.75rem; }
         .del-btn { background: none; border: 1px solid #ffcccc; color: var(--danger); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; width: auto; grid-column: auto; margin: 0;}
-        .del-btn:hover { background: #ffeeee; }
         
         @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
+
+<div id="loadingOverlay">🔄 Syncing Ledger Data...</div>
 
 <div class="container">
     <h3 style="text-align:center; margin-top:0;">Partner Ledger</h3>
@@ -52,7 +61,13 @@
     </div>
 
     <form id="ledgerForm" class="form-grid">
-        <div class="full"><select id="type" onchange="toggleFields()"><option value="expense">Expense</option><option value="transfer">Transfer</option><option value="capital">Investment</option></select></div>
+        <div class="full">
+            <select id="type" onchange="toggleFields()">
+                <option value="expense">Expense</option>
+                <option value="transfer">Transfer</option>
+                <option value="capital">Investment</option>
+            </select>
+        </div>
         <div><input type="date" id="date" required></div>
         <div><input type="number" id="amount" placeholder="Amount" required></div>
         <div id="exp-fields" class="full">
@@ -85,63 +100,65 @@
         document.getElementById('trf-fields').style.display = isTrf ? 'block' : 'none';
     }
 
-async function fetchData() {
-    try {
-        const res = await fetch(SCRIPT_URL);
-        const data = await res.json();
-        
-        // This part matches the name in the Sheet to the ID in the HTML
-        data.summary.forEach(row => {
-            const name = row[0].toLowerCase(); // e.g., "shippu"
-            const invested = row[1];           // Value from Column B
-            const cash = row[2];               // Value from Column C
+    async function fetchData() {
+        try {
+            const res = await fetch(SCRIPT_URL);
+            const data = await res.json();
+            
+            data.summary.forEach(row => {
+                const name = row[0].toLowerCase();
+                const invested = row[1];
+                const cash = row[2];
 
-            // Update Investment Cards
-            const invEl = document.getElementById(`inv-${name}`);
-            if (invEl) invEl.innerText = "₹" + Number(invested).toLocaleString();
+                const invEl = document.getElementById(`inv-${name}`);
+                if (invEl) invEl.innerText = "₹" + Number(invested).toLocaleString();
 
-            // Update Cash-in-Hand Rows
-            const cashEl = document.getElementById(`cash-${name}`);
-            if (cashEl) cashEl.innerText = "₹" + Number(cash).toLocaleString();
-        });
+                const cashEl = document.getElementById(`cash-${name}`);
+                if (cashEl) cashEl.innerText = "₹" + Number(cash).toLocaleString();
+            });
 
-        // Update Logs List
-        const container = document.getElementById('logContainer');
-        if (data.logs && data.logs.length > 0) {
-            container.innerHTML = data.logs.reverse().map(item => `
-                <div class="log-item">
-                    <div>
-                        <b>₹${item.data[2]}</b> - ${item.data[3] || item.data[1]}<br>
-                        <span class="log-meta">${new Date(item.data[0]).toLocaleDateString()} | By: ${item.data[1] === 'transfer' ? item.data[5]+'→'+item.data[6] : item.data[4]}</span>
+            const container = document.getElementById('logContainer');
+            if (data.logs && data.logs.length > 0) {
+                container.innerHTML = data.logs.reverse().map(item => `
+                    <div class="log-item">
+                        <div>
+                            <b>₹${item.data[2]}</b> - ${item.data[3] || item.data[1]}<br>
+                            <span class="log-meta">${new Date(item.data[0]).toLocaleDateString()} | By: ${item.data[1] === 'transfer' ? item.data[5]+'→'+item.data[6] : item.data[4]}</span>
+                        </div>
+                        <button class="del-btn" onclick="deleteLog(${item.originalIndex}, this)">Delete</button>
                     </div>
-                    <button class="del-btn" onclick="deleteLog(${item.originalIndex})">Delete</button>
-                </div>
-            `).join('');
-        } else {
-            container.innerHTML = "No transactions found.";
+                `).join('');
+            } else {
+                container.innerHTML = "No transactions found.";
+            }
+            // Hide initial loader
+            document.getElementById('loadingOverlay').style.display = 'none';
+        } catch (e) {
+            console.error("Fetch failed", e);
+            document.getElementById('loadingOverlay').innerText = "❌ Connection Error. Please refresh.";
         }
-    } catch (e) {
-        console.error("Fetch failed", e);
-        document.getElementById('logContainer').innerText = "Error loading data. Check SCRIPT_URL.";
     }
-}
 
-    async function deleteLog(index) {
+    async function deleteLog(index, btn) {
         const pw = prompt("Enter Admin Password to delete:");
         if (pw === "shibu931") {
             if (confirm("Are you sure you want to remove this record?")) {
+                btn.innerText = "Deleting...";
+                btn.disabled = true;
                 await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', rowIndex: index }) });
-                alert("Deleted!");
                 location.reload();
             }
-        } else {
+        } else if (pw !== null) {
             alert("Wrong Password!");
         }
     }
 
     document.getElementById('ledgerForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        document.getElementById('subBtn').disabled = true;
+        const btn = document.getElementById('subBtn');
+        btn.disabled = true;
+        btn.innerText = "⏳ Processing Transaction...";
+        
         const payload = {
             date: document.getElementById('date').value,
             amount: document.getElementById('amount').value,
@@ -151,8 +168,16 @@ async function fetchData() {
             from: document.getElementById('from-p').value,
             to: document.getElementById('to-p').value
         };
-        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-        location.reload();
+
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+            btn.innerText = "✅ Success! Reloading...";
+            location.reload();
+        } catch (err) {
+            alert("Error saving data. Check connection.");
+            btn.disabled = false;
+            btn.innerText = "Save Entry";
+        }
     });
 
     window.onload = fetchData;
