@@ -3,184 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snack Startup Ledger</title>
+    <title>N2 Working Sheet</title>
     <style>
-        :root { --primary: #27ae60; --secondary: #2980b9; --dark: #2c3e50; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; margin: 0; padding: 10px; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; }
-        
-        /* Loading Overlay */
-        #loadingOverlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8); display: flex; justify-content: center;
-            align-items: center; z-index: 1000; font-weight: bold; color: var(--dark);
+        body{
+            background-color: aliceblue;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 90vh;
         }
-
-        /* Stats */
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-card { padding: 10px; border-radius: 10px; text-align: center; color: white; font-size: 0.8rem; }
-        .shippu { background: var(--secondary); } .anmol { background: #8e44ad; } .suraj { background: #d35400; }
-        .stat-card b { display: block; font-size: 1rem; }
-
-        .funds-summary { background: #fffbe6; padding: 12px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #ffe58f; }
-        .funds-row { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem; }
-
-        /* Form */
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 10px; }
-        .full { grid-column: span 2; }
-        input, select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
-        button { grid-column: span 2; background: var(--primary); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:disabled { background: #95a5a6; cursor: not-allowed; }
-
-        /* Logs */
-        .log-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; font-size: 0.85rem; }
-        .log-meta { color: #666; font-size: 0.75rem; }
-        .del-btn { background: none; border: 1px solid #ffcccc; color: var(--danger); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.7rem; width: auto; grid-column: auto; margin: 0;}
-        
-        @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+        .container{
+            max-width: 400px;
+            margin: 50px auto; 
+            background: white; 
+            padding: 20px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); 
+            text-align: center;
+        }
+        .container a{
+            text-decoration: none;
+            color: royalblue;
+            padding: 10px 20px;
+            border: 1px solid rgba(6, 145, 169, 0.2);
+            border-radius: 8px;
+            margin: 40px;
+            display: block;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 800;
+            box-shadow: 0 5px 15px rgba(128, 0, 128, 0.1);
+        }
     </style>
 </head>
 <body>
-
-<div id="loadingOverlay">🔄 Syncing Ledger Data...</div>
-
-<div class="container">
-    <h3 style="text-align:center; margin-top:0;">Partner Ledger</h3>
-
-    <div class="stats-grid">
-        <div class="stat-card shippu">Shippu Invested <b id="inv-shippu">₹0</b></div>
-        <div class="stat-card anmol">Anmol Invested <b id="inv-anmol">₹0</b></div>
-        <div class="stat-card suraj">Suraj Invested <b id="inv-suraj">₹0</b></div>
+    <div class="container">
+        <a href="./ledger.html">View Ledger</a>
+        <a href="./yield.html">View Yield Sheet</a>
     </div>
-
-    <div class="funds-summary">
-        <b>💰 Cash-in-Hand</b>
-        <div class="funds-row">Shippu: <span id="cash-shippu">₹0</span></div>
-        <div class="funds-row">Anmol: <span id="cash-anmol">₹0</span></div>
-        <div class="funds-row">Suraj: <span id="cash-suraj">₹0</span></div>
-    </div>
-
-    <form id="ledgerForm" class="form-grid">
-        <div class="full">
-            <select id="type" onchange="toggleFields()">
-                <option value="expense">Expense</option>
-                <option value="transfer">Transfer</option>
-                <option value="capital">Investment</option>
-            </select>
-        </div>
-        <div><input type="date" id="date" required></div>
-        <div><input type="number" id="amount" placeholder="Amount" required></div>
-        <div id="exp-fields" class="full">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <input type="text" id="desc" placeholder="Item Name">
-                <select id="partner"><option>Shippu</option><option>Anmol</option><option>Suraj</option></select>
-            </div>
-        </div>
-        <div id="trf-fields" class="full" style="display:none;">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                <select id="from-p"><option>Shippu</option><option>Anmol</option><option>Suraj</option></select>
-                <select id="to-p"><option>Suraj</option><option>Anmol</option><option>Shippu</option></select>
-            </div>
-        </div>
-        <button type="submit" id="subBtn">Save Entry</button>
-    </form>
-
-    <div style="margin-top:20px;">
-        <h4>Recent Logs</h4>
-        <div id="logContainer">Loading logs...</div>
-    </div>
-</div>
-
-<script>
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_7J8nm7oQb5Hovebazh3ZCn6Ib09f50xzR_g4F1mAZrMOe1PPKNKyJyE8C4oGY1Nr/exec";
-
-    function toggleFields() {
-        const isTrf = document.getElementById('type').value === 'transfer';
-        document.getElementById('exp-fields').style.display = isTrf ? 'none' : 'block';
-        document.getElementById('trf-fields').style.display = isTrf ? 'block' : 'none';
-    }
-
-    async function fetchData() {
-        try {
-            const res = await fetch(SCRIPT_URL);
-            const data = await res.json();
-            
-            data.summary.forEach(row => {
-                const name = row[0].toLowerCase();
-                const invested = row[1];
-                const cash = row[2];
-
-                const invEl = document.getElementById(`inv-${name}`);
-                if (invEl) invEl.innerText = "₹" + Number(invested).toLocaleString();
-
-                const cashEl = document.getElementById(`cash-${name}`);
-                if (cashEl) cashEl.innerText = "₹" + Number(cash).toLocaleString();
-            });
-
-            const container = document.getElementById('logContainer');
-            if (data.logs && data.logs.length > 0) {
-                container.innerHTML = data.logs.reverse().map(item => `
-                    <div class="log-item">
-                        <div>
-                            <b>₹${item.data[2]}</b> - ${item.data[3] || item.data[1]}<br>
-                            <span class="log-meta">${new Date(item.data[0]).toLocaleDateString()} | By: ${item.data[1] === 'transfer' ? item.data[5]+'→'+item.data[6] : item.data[4]}</span>
-                        </div>
-                        <button class="del-btn" onclick="deleteLog(${item.originalIndex}, this)">Delete</button>
-                    </div>
-                `).join('');
-            } else {
-                container.innerHTML = "No transactions found.";
-            }
-            // Hide initial loader
-            document.getElementById('loadingOverlay').style.display = 'none';
-        } catch (e) {
-            console.error("Fetch failed", e);
-            document.getElementById('loadingOverlay').innerText = "❌ Connection Error. Please refresh.";
-        }
-    }
-
-    async function deleteLog(index, btn) {
-        const pw = prompt("Enter Admin Password to delete:");
-        if (pw === "shibu931") {
-            if (confirm("Are you sure you want to remove this record?")) {
-                btn.innerText = "Deleting...";
-                btn.disabled = true;
-                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', rowIndex: index }) });
-                location.reload();
-            }
-        } else if (pw !== null) {
-            alert("Wrong Password!");
-        }
-    }
-
-    document.getElementById('ledgerForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const btn = document.getElementById('subBtn');
-        btn.disabled = true;
-        btn.innerText = "⏳ Processing Transaction...";
-        
-        const payload = {
-            date: document.getElementById('date').value,
-            amount: document.getElementById('amount').value,
-            type: document.getElementById('type').value,
-            description: document.getElementById('desc').value,
-            partner: document.getElementById('partner').value,
-            from: document.getElementById('from-p').value,
-            to: document.getElementById('to-p').value
-        };
-
-        try {
-            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-            btn.innerText = "✅ Success! Reloading...";
-            location.reload();
-        } catch (err) {
-            alert("Error saving data. Check connection.");
-            btn.disabled = false;
-            btn.innerText = "Save Entry";
-        }
-    });
-
-    window.onload = fetchData;
-</script>
 </body>
 </html>

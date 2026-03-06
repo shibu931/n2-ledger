@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yield Tracker - Healthy Snacks</title>
+    <style>
+        :root { --primary: #27ae60; --danger: #e74c3c; --dark: #2c3e50; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f4f7f6; padding: 15px; margin: 0; }
+        .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .nav { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .nav a { text-decoration: none; color: var(--primary); font-weight: bold; }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 30px; }
+        .full { grid-column: span 2; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        button { padding: 12px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; }
+        .btn-save { background: var(--primary); color: white; width: 100%; grid-column: span 2; }
+        
+        /* Yield Cards */
+        .yield-card { background: white; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 10px; position: relative; }
+        .yield-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f0f0f0; padding-bottom: 5px; margin-bottom: 10px; }
+        .yield-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; font-size: 0.85rem; }
+        .action-btns { margin-top: 10px; display: flex; gap: 10px; }
+        .btn-edit { background: #f39c12; color: white; flex: 1; }
+        .btn-del { background: var(--danger); color: white; flex: 1; }
+
+        #overlay { position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; justify-content:center; align-items:center; z-index:100; }
+    </style>
+</head>
+<body>
+
+<div id="overlay">🔄 Loading Yield Data...</div>
+
+<div class="container">
+    <div class="nav">
+        <a href="index.html">⬅ Back to Ledger</a>
+        <h3 style="margin:0;">Product Yield</h3>
+    </div>
+
+    <div id="analyticsSection" style="margin-bottom: 30px;">
+    <h4>Fruit Performance Analytics</h4>
+    <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse: collapse; font-size: 0.8rem; background: #fffbe6; border: 1px solid #ffe58f;">
+            <thead>
+                <tr style="background:#fff1b8;">
+                    <th style="padding:8px;">Fruit</th>
+                    <th>Min %</th>
+                    <th>Avg %</th>
+                    <th>Max %</th>
+                    <th>Total Spent</th>
+                </tr>
+            </thead>
+            <tbody id="analyticsBody">
+                </tbody>
+        </table>
+    </div>
+</div>
+
+    <form id="yieldForm" class="form-grid">
+        <input type="hidden" id="editIndex" value="-1">
+        <div class="full"><input type="text" id="fruit" placeholder="Fruit Name (e.g. Apple)" required></div>
+        <div><label style="font-size:0.7rem">Date</label><input type="date" id="date" required></div>
+        <div><label style="font-size:0.7rem">Bought (kg)</label><input type="number" step="0.01" id="bought" placeholder="Bought kg" required></div>
+        <div><label style="font-size:0.7rem">Cost/kg</label><input type="number" id="cost" placeholder="Cost/kg" required></div>
+        <div><label style="font-size:0.7rem">Prepped (kg)</label><input type="number" step="0.01" id="prepped" placeholder="Prepped kg"></div>
+        <div class="full"><label style="font-size:0.7rem">Final Yield (kg)</label><input type="number" step="0.01" id="final" placeholder="Final Yield kg"></div>
+        <button type="submit" class="btn-save" id="saveBtn">Save Record</button>
+        <button type="button" id="cancelEdit" style="display:none; background:#95a5a6; color:white; grid-column: span 2;">Cancel Edit</button>
+    </form>
+
+    <div id="yieldList"></div>
+</div>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx_7J8nm7oQb5Hovebazh3ZCn6Ib09f50xzR_g4F1mAZrMOe1PPKNKyJyE8C4oGY1Nr/exec";
+
+    async function loadYields() {
+        const res = await fetch(SCRIPT_URL);
+        const data = await res.json();
+        const container = document.getElementById('yieldList');
+        const analyticsBody = document.getElementById('analyticsBody');
+        analyticsBody.innerHTML = data.analytics.map(row => `
+            <tr>
+                <td style="padding:8px; font-weight:bold;">${row[0]}</td>
+                <td>${(row[1] * 100).toFixed(1)}%</td>
+                <td>${(row[2] * 100).toFixed(1)}%</td>
+                <td>${(row[3] * 100).toFixed(1)}%</td>
+                <td>₹${Number(row[4]).toLocaleString()}</td>
+            </tr>
+        `).join('');
+        
+        container.innerHTML = data.yieldLogs.reverse().map(item => `
+            <div class="yield-card">
+                <div class="yield-header">
+                    <strong>${item.data[1]}</strong>
+                    <small>${new Date(item.data[0]).toLocaleDateString()}</small>
+                </div>
+                <div class="yield-grid">
+                    <div>Bought: ${item.data[2]}kg</div>
+                    <div>Cost: ₹${item.data[3]}/kg</div>
+                    <div>Prepped: ${item.data[4]}kg</div>
+                    <div>Final: <b>${item.data[5]}kg</b></div>
+                </div>
+                <div class="action-btns">
+                    <button class="btn-edit" onclick='editEntry(${JSON.stringify(item)})'>Edit</button>
+                    <button class="btn-del" onclick="deleteEntry(${item.index})">Delete</button>
+                </div>
+            </div>
+        `).join('');
+        document.getElementById('overlay').style.display = 'none';
+    }
+
+    function editEntry(item) {
+        document.getElementById('editIndex').value = item.index;
+        document.getElementById('date').value = new Date(item.data[0]).toISOString().split('T')[0];
+        document.getElementById('fruit').value = item.data[1];
+        document.getElementById('bought').value = item.data[2];
+        document.getElementById('cost').value = item.data[3];
+        document.getElementById('prepped').value = item.data[4];
+        document.getElementById('final').value = item.data[5];
+        
+        document.getElementById('saveBtn').innerText = "Update Record";
+        document.getElementById('cancelEdit').style.display = "block";
+        window.scrollTo(0,0);
+    }
+
+    document.getElementById('cancelEdit').onclick = () => location.reload();
+
+    async function deleteEntry(index) {
+        const pw = prompt("Enter Password:");
+        if (pw === "shibu931") {
+            document.getElementById('overlay').style.display = "flex";
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', sheet: 'YieldData', rowIndex: index }) });
+            location.reload();
+        }
+    }
+
+    document.getElementById('yieldForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const editIdx = document.getElementById('editIndex').value;
+        const btn = document.getElementById('saveBtn');
+        btn.disabled = true;
+        btn.innerText = "Saving...";
+
+        const payload = {
+            sheet: 'YieldData',
+            action: editIdx === "-1" ? 'add' : 'editYield',
+            rowIndex: parseInt(editIdx),
+            date: document.getElementById('date').value,
+            fruit: document.getElementById('fruit').value,
+            bought: document.getElementById('bought').value,
+            cost: document.getElementById('cost').value,
+            prepped: document.getElementById('prepped').value,
+            final: document.getElementById('final').value
+        };
+
+        await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+        location.reload();
+    };
+
+    window.onload = loadYields;
+</script>
+</body>
+</html>
